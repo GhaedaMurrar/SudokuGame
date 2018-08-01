@@ -1,0 +1,334 @@
+'''
+Created on Jul 30, 2018
+
+@author: G. J. Murrar
+'''
+import collections
+import sys 
+import argparse
+import string
+''' return Block by index from 3d matrix '''
+getBlock = lambda TotalList , i , j : [TotalList[k][u] for k in select_index(i) for u in select_index(j)]
+
+''' return Column by index from 3d matrix '''
+getColumn = lambda TotalList , index : [TotalList[i][index] for i in xrange(9) ]
+
+''' Count Filled cells '''
+CountCells = lambda TotalList : len([TotalList[i][j] for i in xrange(9) for j in xrange(9) if len(TotalList[i][j]) == 1 and TotalList[i][j][0] != 0 ]) 
+
+''' if list = [[1] , [2] , [3] , [6,7,8]] --> filled = [1,2,3] i.e return filled cells only'''
+filled = lambda List : [cell[0] for cell in List if len(cell) == 1 ]
+
+''' subtract list from list  such that sub = items in list1 and not in list2 ''' 
+sub = lambda List1 , List2 : [item for item in List1 if item not in List2]
+
+''' check if list1 and list2 are equal '''
+equal = lambda List1 , List2 : collections.Counter(List1) == collections.Counter(List2)
+
+''' Read Input '''
+ReadInput = lambda path : open(path,"r").read().splitlines()
+
+''' done '''
+''' find occurance of a value in list of possibilities '''
+def Occurance_index(List ,value):
+    tempList = []
+    for i in xrange(len(List)) :
+        cell = List[i]
+        if len(cell)>1 :
+            for j in xrange(len(cell)) :
+                CurrentValue = cell[j]
+                if CurrentValue == value :
+                    tempList.append(i) # i : in which cell 
+    return tempList
+            
+''' done '''
+def Fill(List):
+    ''' first number = value , second number = i , third number = j '''
+    TotalList = [[[0]for x in xrange(9)]for u in xrange(9)]
+    OppositeList = [[[-1]for x in xrange(9)]for u in xrange(9)]
+    for i in xrange(len(List)):
+        TempList = List[i].split()
+        TotalList[int(TempList[1])][int(TempList[2])] = [int(TempList[0])]
+        OppositeList[int(TempList[1])][int(TempList[2])] = [int(TempList[0])]
+    return TotalList , OppositeList
+
+
+def stopLooping( TotalList , OppositeList ,CaseNum , Num ) :
+    result = False
+    TotalList , OppositeList = Pass_(TotalList,OppositeList, CaseNum, Num) 
+    TempList = TotalList
+    TotalList , OppositeList = Pass_(TotalList,OppositeList, CaseNum, Num)
+    if TempList == TotalList :
+        result = True
+    return result
+    
+''' find possibilities Done !'''
+def Possibilites(TotalList , OppositeList):
+    i= -1 
+    while i < 8 :
+        i+=1
+        j = -1
+        while j < 8 :
+            j+=1
+            if len(TotalList[i][j]) > 1 or ( len(TotalList[i][j]) == 1 and TotalList[i][j][0] == 0) :
+                values = [1,2,3,4,5,6,7,8,9]
+                CurrentRow = filled(TotalList[i])
+                CurrentCol = filled(getColumn(TotalList, j))
+                CurrentBlock = filled(getBlock(TotalList, i, j)) 
+                values = sub(values , CurrentRow)
+                values = sub(values , CurrentCol)
+                values = sub(values , CurrentBlock)
+                if len(OppositeList[i][j]) > 1 :
+                    values = sub(values , OppositeList[i][j])
+                OppositeList[i][j] = list(set().union(OppositeList[i][j] , sub([1,2,3,4,5,6,7,8,9] , values)))                 
+                TotalList[i][j] = values
+                if len(OppositeList[i][j]) > 1 and -1 in OppositeList[i][j]: 
+                    OppositeList[i][j].remove(-1)
+                if len(TotalList[i][j]) == 1 : # this cell become a single number, so back to the beginning and recalculate possibilities 
+                    i = -1 
+                    j = -1
+            elif len(TotalList[i][j]) == 1 and TotalList[i][j][0] != 0 :
+                OppositeList[i][j] = TotalList[i][j]
+    return TotalList , OppositeList
+                         
+''' done '''   
+def select_index(i): 
+    indexes = []
+    if i in [0,1,2]: indexes = [0,1,2]
+    elif i in [3,4,5]: indexes = [3,4,5]
+    elif i in [6,7,8] : indexes = [6,7,8]
+    return indexes 
+
+''' done '''
+def setBlock(List ,NewBlock , i , j ):
+    p = 0 
+    for k in select_index(i):
+        for u in select_index(j):
+            List[k][u] = NewBlock[p]
+            p+=1
+
+''' done '''
+def setColumn(TotalList , NewCol, index):
+    for i in xrange(9): TotalList[i][index] = NewCol[i]
+
+def Blocks_and_Rows_Cols(TotalList , OppositeList , CaseNum):
+    for i in xrange(3) :  # 3 groups of blocks
+        for j in xrange(3) : # 3 blocks for each group       
+            if j == 0 :
+                j_1 = 1 
+                j_2 = 2
+            elif j == 1 :
+                j_1 = 0
+                j_2 = 2
+            elif j == 2 :
+                j_1 = 0 
+                j_2 = 1
+            TotalList, OppositeList = Possibilites(TotalList , OppositeList)
+            CurrentBlock_List = getBlock(TotalList, i*3, j*3)
+            CurrentBlock_Opposite = getBlock(OppositeList, i*3, j*3)
+
+            Block1_List = getBlock(TotalList, i*3, j_1*3)
+            Block1_Opposite = getBlock(OppositeList, i*3, j_1*3)
+            
+            Block2_List = getBlock(TotalList, i*3, j_2*3)
+            Block2_Opposite = getBlock(OppositeList, i*3, j_2*3)
+            
+            for k in xrange(3): # 3 lines for each group 
+                for m in xrange(3): # 3 cells in each line 
+                    cell = CurrentBlock_List[k*3+m]
+                    if len(cell) != 1 :
+                        for u in xrange(len(cell)) :
+                            value = cell[u]
+                            CurrentBlock_List_otherRows = []
+                            for d in sub([0,1,2,3,4,5,6,7,8],[k*3 , k*3 +1 ,  k*3+2 ]) :
+                                CurrentBlock_List_otherRows.append(CurrentBlock_List[d])
+                            if CaseNum == 1 :
+                                if len(Occurance_index(CurrentBlock_List_otherRows, value)) == 0 :
+                                    if len(Occurance_index(Block1_List[k*3 : (k*3)+3], value)) != 0  :
+                                        for n in Occurance_index(Block1_List[k*3 : (k*3)+3], value):
+                                            Block1_List[n+k*3].remove(value)
+                                            Block1_Opposite[n+k*3].append(value) 
+                                    if len(Occurance_index(Block2_List[k*3 : (k*3)+3], value)) != 0 :
+                                        for n in Occurance_index(Block2_List[k*3 : (k*3)+3], value) :
+                                            Block2_List[n+k*3].remove(value)
+                                            Block2_Opposite[n+k*3].append(value)
+                            elif CaseNum == 2 :
+                                if len(Occurance_index(CurrentBlock_List_otherRows, value)) != 0 :
+                                    if len(Occurance_index(Block1_List[k*3 : (k*3)+3], value)) == 0:
+                                        if len(Occurance_index(Block2_List[k*3 : (k*3)+3], value)) == 0 :
+                                            for b in sub( [0,1,2,3,4,5,6,7,8] ,[k*3,(k*3)+1,(k*3)+2]) :
+                                                if value in CurrentBlock_List[b] :
+                                                    CurrentBlock_List[b].remove(value)
+                                                    CurrentBlock_Opposite[b].append(value)
+            setBlock(TotalList, CurrentBlock_List, i*3, j*3)
+            setBlock(OppositeList, CurrentBlock_Opposite , i*3 , j*3)
+    
+            setBlock(TotalList, Block1_List, i*3, j_1*3)
+            setBlock(OppositeList, Block1_Opposite, i*3, j_1*3)
+                
+            setBlock(TotalList, Block2_List, i*3, j_2*3)
+            setBlock(OppositeList, Block2_Opposite, i*3, j_2*3)
+                
+            TotalList , OppositeList = Possibilites(TotalList, OppositeList)
+    return TotalList , OppositeList
+
+''' almost done ! '''
+''' pass rows , cols , blocks to functions '''
+def Pass_(TotalList , OppositeList , CaseNum , Num):
+    for i in xrange(9):
+        TotalList , OppositeList = Possibilites(TotalList , OppositeList)
+        if CaseNum == 1 : 
+            TotalList[i] = find_Hidden_Singles(TotalList[i])
+        elif CaseNum == 2 : 
+            TotalList[i] , OppositeList[i] = find_Naked_PTQ(TotalList[i] , OppositeList[i] ,Num)
+        elif CaseNum == 3 : 
+            TotalList[i] , OppositeList[i] = find_Hidden_PTQ(TotalList[i] , OppositeList[i] , Num)
+        TotalList , OppositeList = Possibilites(TotalList , OppositeList)
+        
+    for j in xrange(9):
+        TotalList , OppositeList =Possibilites(TotalList, OppositeList)
+        CurrentCol_List= getColumn(TotalList, j)
+        CurrentCol_Opposite = getColumn(OppositeList , j)
+        if CaseNum == 1 : 
+            CurrentCol_List = find_Hidden_Singles(CurrentCol_List)     
+        elif CaseNum == 2 : 
+            CurrentCol_List , CurrentCol_Opposite = find_Naked_PTQ(CurrentCol_List ,CurrentCol_Opposite, Num) 
+        elif CaseNum == 3 : 
+            CurrentCol_List , CurrentCol_Opposite = find_Hidden_PTQ(CurrentCol_List,CurrentCol_Opposite , Num)
+        setColumn(TotalList , CurrentCol_List , j)
+        setColumn(OppositeList, CurrentCol_Opposite, j)
+        TotalList , OppositeList = Possibilites(TotalList, OppositeList)
+        
+    for  k  in xrange(0,9,3):
+        for u in xrange(0,9,3):
+            CurrentBlock_List = getBlock(TotalList, k, u) 
+            CurrentBlock_Opposite = getBlock(OppositeList , k , u)
+            TotalList, OppositeList=Possibilites(TotalList, OppositeList)
+            if CaseNum == 1 : 
+                CurrentBlock_List = find_Hidden_Singles(CurrentBlock_List)
+            elif CaseNum == 2 : 
+                CurrentBlock_List, CurrentBlock_Opposite = find_Naked_PTQ(CurrentBlock_List , CurrentBlock_Opposite , Num)
+            elif CaseNum == 3 : 
+                CurrentBlock_List , CurrentBlock_Opposite = find_Hidden_PTQ(CurrentBlock_List, CurrentBlock_Opposite , Num)
+            setBlock(TotalList, CurrentBlock_List ,k , u )
+            setBlock(OppositeList, CurrentBlock_Opposite  ,k, u)
+            TotalList , OppositeList = Possibilites(TotalList, OppositeList)
+    return TotalList  , OppositeList
+
+''' done - Hidden Singles ''' 
+def find_Hidden_Singles(List):
+    for i in xrange(len(List)):
+        CurrentCell = List[i]
+        if len(CurrentCell) > 1 :
+            for j in xrange(len(CurrentCell)) :
+                CurrentValue = CurrentCell[j]
+                if len(Occurance_index(List, CurrentValue)) == 1 :
+                    CurrentCell = map(int , str(CurrentValue))
+                    List[i] = CurrentCell
+                    break 
+    return List
+   
+''' done - Naked Pairs/Tuples/Quads'''
+def find_Naked_PTQ(TotalList_line, OppositeList_line ,Num):
+    for i in xrange(len(TotalList_line)):
+        CurrentCell = TotalList_line[i]
+        if len(CurrentCell) == Num and TotalList_line.count(CurrentCell) == Num:
+            for j in xrange(len(TotalList_line)) :
+                Cell = TotalList_line[j]
+                if len(sub(Cell , CurrentCell)) != 0 :
+                    Cell = sub(Cell, CurrentCell)
+                    TotalList_line[j] = Cell
+                    OppositeList_line[j].extend(CurrentCell)
+    return TotalList_line , OppositeList_line
+
+''' done - Hidden pairs/Triples/Quads''' 
+def find_Hidden_PTQ(TotalList_line , OppositeList_line , num ):
+    for i in xrange(len(TotalList_line)) :
+        CurrentCell = TotalList_line[i]
+        if len(CurrentCell) > 1 :
+            indexes = []
+            values = []
+            for j in xrange(len(CurrentCell)) :
+                CurrentValue = CurrentCell[j]  
+                occur = Occurance_index(TotalList_line, CurrentValue)   
+                if len(occur) == num  :
+                    if len(values) == 0 :
+                        indexes.extend(occur)
+                        values.append(CurrentValue)
+                    elif equal(occur , indexes) :
+                        if len(values) < num: 
+                            if CurrentValue not in values:
+                                values.append(CurrentValue)
+            if len(values) == num :
+                for k in indexes:
+                    temp = sub(TotalList_line[k] , values)
+                    TotalList_line[k] = values
+                    OppositeList_line[k].extend(temp)
+                       
+    return TotalList_line , OppositeList_line
+
+def Solve(TotalList , OppositeList):
+    Counter = 0
+    while (CountCells(TotalList) != 81 ) :
+        TotalList ,OppositeList  = Possibilites(TotalList , OppositeList)
+        test = True 
+        if Counter == 0 : 
+            while True : 
+                if ((stopLooping(TotalList , OppositeList ,1,0))) : break
+        elif Counter == 1 :
+            while True : 
+                if ((stopLooping(TotalList , OppositeList ,2,2))) : break
+        elif Counter == 2 :
+            while True : 
+                if ((stopLooping(TotalList , OppositeList ,2,3))) : break 
+        elif Counter == 3 :
+            while True : 
+                if ((stopLooping(TotalList , OppositeList ,2,4))) : break 
+        elif Counter == 4 :
+            while True : 
+                if ((stopLooping(TotalList , OppositeList ,3,2))) : break 
+        elif Counter == 5 : 
+            while True : 
+                if ((stopLooping(TotalList , OppositeList ,3,3))) : break
+        elif Counter == 6 : 
+            while True : 
+                if ((stopLooping(TotalList , OppositeList ,3,4))) : break
+        elif Counter == 7 :
+            while True :
+                TotalList , OppositeList = Blocks_and_Rows_Cols(TotalList,OppositeList , 1) # Row +Block / Col+Block
+                TempList = TotalList
+                TotalList , OppositeList = Blocks_and_Rows_Cols(TotalList,OppositeList , 1) # Row +Block / Col+Block
+                if TempList == TotalList :
+                    break 
+        elif Counter == 8 : 
+            while True :
+                TotalList , OppositeList = Blocks_and_Rows_Cols(TotalList,OppositeList , 2) # Row +Block / Col+Block
+                TempList = TotalList
+                TotalList , OppositeList = Blocks_and_Rows_Cols(TotalList,OppositeList , 2) # Row +Block / Col+Block
+                if TempList == TotalList :
+                    break 
+        else :
+            Counter = 0
+            test = False 
+        if test :
+            Counter+=1
+    print str('\n\n')
+    for i in xrange(9):
+        print TotalList[i]
+    
+    
+    
+if __name__ == '__main__' :
+    
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-f" ,"--file" ,dest="Path" , help = "Enter InputFile path as a String ")
+    args = parser.parse_args()
+    Path = args.Path
+    lines = ReadInput(Path)
+    TotalList , OppositeList = Fill(lines)
+    for i in xrange(9) :
+        print TotalList[i]
+    TotalList , OppositeList = Possibilites(TotalList , OppositeList)
+    Solve(TotalList , OppositeList)
+    
+                
